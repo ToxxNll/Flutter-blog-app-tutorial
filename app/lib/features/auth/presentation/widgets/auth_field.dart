@@ -10,7 +10,7 @@ class AuthField extends StatelessWidget {
     required this.hintText,
     required this.controller,
     this.isPassword = false,
-  });
+  }); 
 
   @override
   Widget build(BuildContext context) {
