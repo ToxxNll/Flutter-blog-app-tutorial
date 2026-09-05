@@ -22,9 +22,23 @@ class AuthRemoteDataSourceImp implements AuthRemoteDataSource {
   Future<UserModel> loginWithEmailAndPassword({
     required String email,
     required String password,
-  }) {
-    // TODO: implement loginWithEmailAndPassword
-    throw UnimplementedError();
+  }) async {
+    try {
+      final response = await supabaseClient.auth.signInWithPassword(
+        password: password,
+        email: email,
+      );
+      if (response.user == null) {
+        throw ServerExceptions('User is null. ');
+      }
+      return UserModel.fromJson(response.user!.toJson());
+    } on AuthException catch (e) {
+      throw ServerExceptions(e.message);
+    } catch (_) {
+      throw const ServerExceptions(
+        'Unable to create your account. Please try again.',
+      );
+    }
   }
 
   @override
