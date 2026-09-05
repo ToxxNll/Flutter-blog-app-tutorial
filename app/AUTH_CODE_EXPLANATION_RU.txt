@@ -1,0 +1,307 @@
+ПОДРОБНОЕ ОБЪЯСНЕНИЕ АВТОРИЗАЦИИ В ПРИЛОЖЕНИИ
+================================================
+
+Этот файл описывает путь регистрации пользователя: от запуска Flutter
+до создания пользователя в Supabase и показа результата на экране.
+
+1. КАК УСТРОЕН КОД
+-------------------
+
+Код разделён на слои. У каждого слоя одна задача:
+
+presentation/  — экран, поля ввода, кнопка и Bloc.
+domain/        — правила приложения: что значит «зарегистрировать пользователя».
+data/          — реальный запрос к Supabase.
+core/          — общие классы: ошибки, тема, ключи.
+
+Направление вызовов при регистрации:
+
+SignUpPage
+  -> AuthBloc
+  -> UserSignUp (use case)
+  -> AuthRepository
+  -> AuthRepositoryImpl
+  -> AuthRemoteDataSource
+  -> AuthRemoteDataSourceImp
+  -> SupabaseClient
+  -> Supabase Auth
+
+
+2. ТОЧКА ВХОДА: lib/main.dart
+--------------------------------
+
+Flutter начинает работу с функции main().
+
+WidgetsFlutterBinding.ensureInitialized();
+
+Подготавливает Flutter перед асинхронной инициализацией. Это нужно,
+потому что Supabase.initialize() выполняется с await.
+
+await initDependencies();
+
+Настраивает все зависимости приложения: SupabaseClient, источник данных,
+репозиторий, use case и AuthBloc. Важно дождаться этой функции до runApp(),
+иначе приложение попробует получить ещё не зарегистрированные объекты.
+
+runApp(...)
+
+Запускает интерфейс. MultiBlocProvider передаёт AuthBloc всем дочерним
+виджетам. Поэтому на SignUpPage можно написать:
+
+context.read<AuthBloc>()
+
+и получить один и тот же AuthBloc, созданный в serviceLocator.
+
+MyApp создаёт MaterialApp. В home указана LoginPage, а оттуда пользователь
+переходит на SignUpPage.
+
+
+3. GETIT И init_dependencies.dart
+---------------------------------
+
+final serviceLocator = GetIt.instance;
+
+GetIt — это «контейнер объектов». В нём мы говорим, как создать объект,
+а затем получаем его по типу:
+
+serviceLocator<SupabaseClient>()
+serviceLocator<AuthBloc>()
+
+В initDependencies() происходит следующее:
+
+1) Supabase.initialize(...) подключает SDK к проекту Supabase с URL и
+   publishable/anon key из AppSecrets.
+
+2) registerLazySingleton(() => supabase.client) регистрирует SupabaseClient.
+   Lazy singleton означает: клиент будет получен при первом запросе и дальше
+   всегда будет использоваться один общий экземпляр. Это важно, поскольку
+   клиент хранит авторизационную сессию пользователя.
+
+3) _initAuth() регистрирует объекты, относящиеся к авторизации.
+
+В текущем файле _initAuth() вызывается до регистрации клиента. Это работает,
+потому что registerFactory только запоминает функцию создания и не создаёт
+AuthRemoteDataSourceImp сразу. При его создании SupabaseClient уже
+зарегистрирован. Для более очевидного чтения можно сначала инициализировать
+SupabaseClient, а затем вызывать _initAuth().
+
+Разница регистраций:
+
+registerFactory(() => Object())
+  Каждый serviceLocator<Object>() создаёт новый Object.
+  В проекте так создаются AuthRemoteDataSource, AuthRepository и UserSignUp.
+
+registerLazySingleton(() => Object())
+  Один общий Object на всё приложение; он создаётся/получается только тогда,
+  когда впервые понадобится.
+  В проекте так используются SupabaseClient и AuthBloc.
+
+_initAuth() строит цепочку зависимостей:
+
+AuthRemoteDataSourceImp получает SupabaseClient.
+AuthRepositoryImpl получает AuthRemoteDataSource.
+UserSignUp получает AuthRepository.
+AuthBloc получает UserSignUp.
+
+Вызов serviceLocator() внутри фабрики означает «получи объект нужного типа
+из GetIt». Тип выводится из типа параметра конструктора.
+
+
+4. ЭКРАН РЕГИСТРАЦИИ: SignUpPage
+--------------------------------
+
+SignUpPage — StatefulWidget, потому что хранит состояние полей формы:
+
+nameController
+emailController
+passwordController
+formKey
+
+TextEditingController хранит текущий текст поля. Например:
+
+emailController.text
+
+возвращает введённый email.
+
+В dispose() контроллеры освобождаются, когда экран закрывается. Это
+предотвращает утечки памяти.
+
+Form с formKey объединяет три поля. При нажатии кнопки выполняется:
+
+formKey.currentState!.validate()
+
+Каждый AuthField запускает validator. Если поле пустое, validator возвращает
+текст ошибки, и запрос в Supabase не отправляется.
+
+Если форма корректна, экран отправляет событие в Bloc:
+
+context.read<AuthBloc>().add(
+  AuthSignUp(
+    name: nameController.text.trim(),
+    email: emailController.text.trim(),
+    password: passwordController.text.trim(),
+  ),
+);
+
+trim() удаляет пробелы в начале и в конце текста.
+
+ВАЖНО: в AuthField обязательно должна быть строка:
+
+controller: controller,
+
+Без неё пользователь визуально сможет печатать, однако nameController,
+emailController и passwordController останутся пустыми. В Supabase уйдут
+пустые значения, и регистрация завершится ошибкой.
+
+
+5. AuthField
+------------
+
+AuthField — переиспользуемый виджет одного поля ввода.
+
+Он получает:
+
+hintText    — подсказку: Name, Email или Password.
+controller  — контроллер, в котором хранится введённый текст.
+isPassword  — нужно ли скрывать пароль точками.
+
+TextFormField использует controller для чтения и записи текста.
+obscureText: isPassword скрывает символы только для поля пароля.
+
+
+6. BLOC: СОБЫТИЯ И СОСТОЯНИЯ
+-----------------------------
+
+AuthEvent — события, которые приходят от интерфейса.
+AuthSignUp — событие «пользователь нажал зарегистрироваться». Оно содержит
+name, email и password.
+
+AuthState — состояние авторизации:
+
+AuthInitial  — исходное состояние.
+AuthLoading  — запрос выполняется.
+AuthSuccess  — регистрация успешна; uid содержит id пользователя.
+AuthFailure  — произошла ошибка; message содержит её текст.
+
+AuthBloc слушает AuthSignUp:
+
+on<AuthSignUp>((event, emit) async { ... })
+
+Сначала он отправляет AuthLoading, затем вызывает UserSignUp с данными из
+события. Ответ имеет тип Either<Failure, String>:
+
+left(Failure)  — ошибка.
+right(String)  — успех, строка содержит user id.
+
+response.fold(
+  (failure) => emit(AuthFailure(failure.message)),
+  (uid) => emit(AuthSuccess(uid)),
+)
+
+fold выбирает одну из двух веток. Дополнительный try/catch в Bloc не даёт
+непредвиденной ошибке «уронить» приложение.
+
+
+7. UserSignUp: ПРАВИЛО ПРИЛОЖЕНИЯ
+---------------------------------
+
+UserSignUp — use case, то есть отдельное действие «зарегистрировать
+пользователя». Он принимает UserSignUpParams и передаёт name, email, password
+в AuthRepository.
+
+Такой слой может показаться лишним в маленьком приложении, но он полезен:
+интерфейс и Bloc не знают, откуда берутся данные. Позже Supabase можно
+заменить на другой сервис, почти не меняя экран и Bloc.
+
+
+8. REPOSITORY
+-------------
+
+AuthRepository — интерфейс (контракт). Он говорит: любая реализация
+авторизации должна уметь зарегистрировать пользователя и вернуть либо
+Failure, либо user id.
+
+AuthRepositoryImpl — конкретная реализация. Она вызывает
+AuthRemoteDataSource и преобразует исключение ServerExceptions в:
+
+left(Failure(сообщение))
+
+То есть исключение из низкого слоя не доходит до интерфейса как необработанная
+ошибка. Bloc получает понятный результат.
+
+
+9. DATASOURCE И SUPABASE
+------------------------
+
+AuthRemoteDataSourceImp — единственное место, где выполняется прямой вызов
+Supabase SDK:
+
+supabaseClient.auth.signUp(
+  email: email,
+  password: password,
+  data: {'name': name},
+)
+
+Supabase создаёт запись в Authentication > Users. Поле name попадает в
+метаданные пользователя (user_metadata), а не в вашу таблицу profiles/users.
+
+Если response.user == null, datasource сообщает об ошибке.
+
+Если Supabase вернул AuthException (например, неверный email, короткий
+пароль, пользователь уже существует или регистрация отключена), она
+превращается в ServerExceptions с исходным сообщением. Другие непредвиденные
+ошибки получают безопасное общее сообщение.
+
+
+10. ВОЗВРАТ НА ЭКРАН
+--------------------
+
+SignUpPage использует BlocListener. Он слушает изменения AuthState:
+
+AuthFailure -> SnackBar с текстом ошибки Supabase.
+AuthSuccess -> SnackBar об успешном создании аккаунта.
+
+BlocListener предназначен для одноразовых действий: уведомления, навигации,
+диалогов. Он не строит интерфейс заново.
+
+Если включён Confirm email в Supabase, пользователь создаётся, но должен
+подтвердить почту перед входом. Если Confirm email отключён для тестирования,
+пользователь создаётся и получает сессию сразу.
+
+
+11. ПОЛНАЯ ПОСЛЕДОВАТЕЛЬНОСТЬ
+-----------------------------
+
+1) Приложение запускается.
+2) main() ждёт initDependencies().
+3) GetIt запоминает, как создавать объекты авторизации.
+4) LoginPage открывается как стартовый экран.
+5) Пользователь переходит на SignUpPage.
+6) Пользователь вводит имя, email и пароль.
+7) AuthField записывает текст в контроллеры.
+8) Нажатие Sign Up проверяет форму.
+9) SignUpPage создаёт AuthSignUp и отправляет его в AuthBloc.
+10) AuthBloc отправляет AuthLoading и вызывает UserSignUp.
+11) UserSignUp вызывает AuthRepositoryImpl.
+12) Repository вызывает AuthRemoteDataSourceImp.
+13) Datasource вызывает supabaseClient.auth.signUp(...).
+14) Supabase возвращает user id или ошибку.
+15) Ошибка превращается в Failure; успех остаётся user id.
+16) AuthBloc отправляет AuthFailure либо AuthSuccess.
+17) BlocListener показывает SnackBar с результатом.
+
+
+12. ЧТО ЕЩЁ НЕ РЕАЛИЗОВАНО
+--------------------------
+
+loginWithEmailAndPassword пока содержит UnimplementedError в datasource и
+repository. Поэтому вход ещё не работает, даже если регистрация уже работает.
+
+Также после AuthSuccess приложение сейчас только показывает сообщение. Можно
+добавить переход на главный экран или на LoginPage:
+
+Navigator.pushReplacement(...)
+
+Никогда не помещайте service_role key в Flutter-приложение. В клиентском
+приложении допустим только publishable/anon key; service_role key должен
+использоваться исключительно на защищённом сервере.
