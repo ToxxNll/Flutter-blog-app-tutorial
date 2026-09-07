@@ -11,17 +11,27 @@ void main() async {
   runApp(
     MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => serviceLocator<AuthBloc>(),
-        ),
+        BlocProvider(create: (_) => serviceLocator<AuthBloc>()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    context.read<AuthBloc>().add(AuthIsLoggedIn());
+
+    super.initState();
+  }
 
   // This widget is the root of your application.
   @override
