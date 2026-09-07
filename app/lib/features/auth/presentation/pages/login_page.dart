@@ -39,7 +39,7 @@ class _LoginPageState extends State<LoginPage> {
           listener: (context, state) {
             if (state is AuthFailure) {
               showSnackBar(context, state.message);
-            } else if (state is AuthSuccess) {
+            } else if (state is AuthSuccess) { 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
