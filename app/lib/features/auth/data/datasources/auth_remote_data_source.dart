@@ -33,7 +33,7 @@ class AuthRemoteDataSourceImp implements AuthRemoteDataSource {
       final response = await supabaseClient.auth
           .signInWithPassword(password: password, email: email);
       if (response.user == null) {
-        throw ServerExceptions('User is null. ');
+        throw const ServerExceptions('User is null. ');
       }
       return UserModel.fromJson(response.user!.toJson());
     } on AuthException catch (e) {
@@ -58,7 +58,7 @@ class AuthRemoteDataSourceImp implements AuthRemoteDataSource {
         data: {'name': name},
       );
       if (response.user == null) {
-        throw ServerExceptions('User is null. ');
+        throw const ServerExceptions('User is null. ');
       }
       return UserModel.fromJson(response.user!.toJson());
     } on AuthException catch (e) {

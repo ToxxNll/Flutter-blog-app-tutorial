@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class SignUpPage extends StatefulWidget {
-  static MaterialPageRoute<dynamic> route() =>
-      MaterialPageRoute(builder: (context) => SignUpPage());
+  static MaterialPageRoute<dynamic> route() => MaterialPageRoute(
+    builder: (context) => const SignUpPage(),
+  );
   const new({super.key});
 
   @override
@@ -36,7 +37,7 @@ class _SignUpPageState extends State<SignUpPage> {
     return Scaffold(
       appBar: AppBar(),
       body: Padding(
-        padding: EdgeInsets.all(15.0),
+        padding: const EdgeInsets.all(15.0),
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthFailure) {
@@ -55,13 +56,13 @@ class _SignUpPageState extends State<SignUpPage> {
             if (state is AuthLoading) {
               return const Loader();
             }
-            
+
             return Form(
               key: formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Sign Up',
                     style: TextStyle(
                       fontSize: 50,

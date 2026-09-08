@@ -10,7 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class LoginPage extends StatefulWidget {
   static MaterialPageRoute<dynamic> route() =>
-      MaterialPageRoute(builder: (context) => LoginPage());
+      MaterialPageRoute(builder: (context) => const LoginPage());
   const new({super.key});
 
   @override
@@ -34,43 +34,32 @@ class _LoginPageState extends State<LoginPage> {
     // formKey.currentState!.validate();
     return Scaffold(
       body: Padding(
-        padding: EdgeInsets.all(15.0),
+        padding: const EdgeInsets.all(15.0),
         child: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthFailure) {
               showSnackBar(context, state.message);
-            } else if (state is AuthSuccess) { 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Welcome back!',
-                  ),
-                ),
-              );
+            } else if (state is AuthSuccess) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(const SnackBar(content: Text('Welcome back!')));
             }
           },
           builder: (context, state) {
             if (state is AuthLoading) {
               return const Loader();
             }
-            
+
             return Form(
               key: formKey,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Sign In',
-                    style: TextStyle(
-                      fontSize: 50,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 50, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 30),
-                  AuthField(
-                    hintText: 'Email',
-                    controller: emailController,
-                  ),
+                  AuthField(hintText: 'Email', controller: emailController),
                   const SizedBox(height: 15),
                   AuthField(
                     hintText: 'Password',
@@ -85,8 +74,7 @@ class _LoginPageState extends State<LoginPage> {
                         context.read<AuthBloc>().add(
                           AuthLoginEvent(
                             email: emailController.text.trim(),
-                            password: passwordController.text
-                                .trim(),
+                            password: passwordController.text.trim(),
                           ),
                         );
                       }
@@ -97,27 +85,18 @@ class _LoginPageState extends State<LoginPage> {
                     child: RichText(
                       text: TextSpan(
                         text: 'Don\'t have an account? ',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium,
+                        style: Theme.of(context).textTheme.titleMedium,
                         children: [
                           TextSpan(
                             text: 'Sign Up',
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: AppPallete.gradient2,
-                                ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(color: AppPallete.gradient2),
                           ),
                         ],
                       ),
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        SignUpPage.route(),
-                      );
+                      Navigator.push(context, SignUpPage.route());
                     },
                   ),
                 ],
