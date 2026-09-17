@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class BlogEditor extends StatelessWidget {
@@ -16,6 +15,12 @@ class BlogEditor extends StatelessWidget {
       controller: controller,
       decoration: InputDecoration(hintText: hintText),
       maxLines: null,
+      validator: (value) {
+        if (value!.isEmpty) {
+          return '$hintText is missing!';
+        }
+        return null;
+      },
     );
   }
 }
