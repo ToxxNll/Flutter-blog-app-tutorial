@@ -9,6 +9,7 @@ class BlogModel extends Blog {
     required super.imageUrl,
     required super.topics,
     required super.updatedAt,
+    String? userName,
   });
 
   BlogModel copyWith({
@@ -19,15 +20,17 @@ class BlogModel extends Blog {
     String? imageUrl,
     List<String>? topics,
     DateTime? updatedAt,
+    String? userName,
   }) {
     return BlogModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       title: title ?? this.title,
       content: content ?? this.content,
-      imageUrl: imageUrl ?? this.imageUrl, 
+      imageUrl: imageUrl ?? this.imageUrl,
       topics: topics ?? this.topics,
       updatedAt: updatedAt ?? this.updatedAt,
+      userName: userName ?? this.userName,
     );
   }
 
