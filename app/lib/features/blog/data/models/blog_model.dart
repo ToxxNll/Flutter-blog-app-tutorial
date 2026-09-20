@@ -9,7 +9,7 @@ class BlogModel extends Blog {
     required super.imageUrl,
     required super.topics,
     required super.updatedAt,
-    String? userName,
+    super.userName,
   });
 
   BlogModel copyWith({
