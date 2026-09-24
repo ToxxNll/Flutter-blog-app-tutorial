@@ -4,13 +4,13 @@ import 'package:app/core/utils/show_snackbar.dart';
 import 'package:app/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/features/auth/presentation/widgets/auth_field.dart';
 import 'package:app/features/auth/presentation/widgets/auth_gradient_button.dart';
+import 'package:app/features/blog/presentation/pages/blog_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class SignUpPage extends StatefulWidget {
-  static MaterialPageRoute<dynamic> route() => MaterialPageRoute(
-    builder: (context) => const SignUpPage(),
-  );
+  static MaterialPageRoute<dynamic> route() =>
+      MaterialPageRoute(builder: (context) => const SignUpPage());
   const new({super.key});
 
   @override
@@ -43,12 +43,10 @@ class _SignUpPageState extends State<SignUpPage> {
             if (state is AuthFailure) {
               showSnackBar(context, state.message);
             } else if (state is AuthSuccess) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Account created. Check your email to confirm it.',
-                  ),
-                ),
+              Navigator.pushAndRemoveUntil(
+                context,
+                BlogPage.route(),
+                (route) => false,
               );
             }
           },
